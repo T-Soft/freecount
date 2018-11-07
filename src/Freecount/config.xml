@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+	<CheckupIntervalMinutes>1</CheckupIntervalMinutes>
+	<CertCheckupIntervalDays>1</CertCheckupIntervalDays>
+
+	<ControlObjList>
+		<Obj type='disk' criticalThresholdGb="100.4" thresholdType="used">
+			<Value>C:</Value>
+			<Exec>cmd.exe ..\..\a.html type=dskD value=%value% limit=%limit%</Exec>
+		</Obj>
+		<Obj type='disk' criticalThresholdGb="100">
+			<Value>D:</Value>
+			<Exec>cmd.exe ..\..\a.html type=dskD value=%value% limit=%limit%</Exec>
+		</Obj>
+		<Obj type='ram' criticalThresholdGb="1" thresholdType="free">
+			<Exec>cmd.exe ..\..\a.html type=ram value=%value% limit=%limit%</Exec>
+		</Obj>
+		<Obj type="cert" daysBeforeAlert="30">
+			<!--<Store></Store>-->
+			<Thumbprint>02 fa f3 e2 91 43 54 68 60 78 57 69 4d f5 e4 5b 68 85 18 68</Thumbprint>
+			<Exec>cmd.exe ..\..\a.html type=cert subject=%cert_subject% expires=%expires_in%</Exec>
+		</Obj>
+	</ControlObjList>
+
+	<SmtpServer isActive="0">
+		<Address>mail.crc.ru</Address>
+		<Port>25</Port>
+		<Login>######</Login>
+		<Password>######</Password>
+		<Sender>
+			<Name>Freecount</Name>
+			<Email>######</Email>
+		</Sender>
+	</SmtpServer>
+	
+	<EmailTemplates>
+		<Template event="warning">
+			<Subject>WARNING! %nick% state critical!</Subject>
+			<Body>WARNING! Counter %nick% value [%value% GB] is below threshold of [%limit% GB]</Body>
+		</Template>
+		<Template event="ok">
+			<Subject>INFO. %nick% state OK!</Subject>
+			<Body>Counter %nick% value [%value% GB] is back within the threshold of [%limit% GB]</Body>
+		</Template>
+		<Template event="certExpires">
+			<Subject>WARNING! Crtificate %cert_subject% expires soon!</Subject>
+			<Body>WARNING! Certificate %cert_subject% expires in %expires_in% days</Body>
+		</Template>
+		<Template event="certExpired">
+			<Subject>WARNING! Crtificate %cert_subject% expired!</Subject>
+			<Body>WARNING! Certificate %cert_subject% expired %expires_in% days ago</Body>
+		</Template>
+	</EmailTemplates>
+
+	<AdminEmailList>
+		<Admin nick="TS">######</Admin>
+	</AdminEmailList>
+
+</Configuration>
