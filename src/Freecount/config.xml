@@ -16,7 +16,7 @@
 			<Exec>cmd.exe ..\..\a.html type=ram value=%value% limit=%limit%</Exec>
 		</Obj>
 		<Obj type="cert" daysBeforeAlert="30">
-			<!--<Store></Store>-->
+			<Store></Store>
 			<Thumbprint>02 fa f3 e2 91 43 54 68 60 78 57 69 4d f5 e4 5b 68 85 18 68</Thumbprint>
 			<Exec>cmd.exe ..\..\a.html type=cert subject=%cert_subject% expires=%expires_in%</Exec>
 		</Obj>

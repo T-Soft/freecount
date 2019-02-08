@@ -5,26 +5,64 @@ namespace Freecount.Checkers.Certificate
 {
 	internal class CertificateCheckResult : ResourceCheckResult
 	{
-		public override string CheckName { get; }
+		private readonly CertificateCheckerSettings _settings;
 
-		public override List<string> GetStatusReport()
+		public CertificateCheckResult(
+			string checkName,
+			CertificateCheckerSettings settings,
+			bool isOk,
+			bool wasErrorOnLastCheck) : base(
+			checkName,
+			isOk,
+			wasErrorOnLastCheck)
+		{
+			_settings = settings;
+		}
+
+		public override IEnumerable<string> GetStatusReport()
 		{
 			throw new NotImplementedException();
 		}
 
 		public override string GetEmailSubject(string template)
 		{
-			throw new NotImplementedException();
+			//<Subject>WARNING! Crtificate %cert_subject% expired!</Subject>
+			return template.Replace("%cert_subject%", _settings.Certificate.Subject);
 		}
 
 		public override string GetEmailBody(string template)
 		{
-			throw new NotImplementedException();
+			//<Body>WARNING! Certificate %cert_subject% expired %expires_in% days ago</Body>
+			return template
+				.Replace("%cert_subject%", _settings.Certificate.Subject)
+				.Replace(
+					"%expires_in%",
+					(DateTime.Now - _settings.Certificate.NotAfter).TotalDays.ToString("####.#").Replace(",", "."));
+
 		}
 
-		public override void GetCommandLineParts(out string executableName, out string arguments)
+		public override bool GetCommandLineParts(out string executableName, out string arguments)
 		{
-			throw new NotImplementedException();
+			// <Exec>cmd.exe ..\..\a.html type=cert subject=%cert_subject% expires=%expires_in%</Exec>
+			(bool success, string excutableNameDefault, string argumentsDefault) =
+				GetCommandLinePartsDefault(_settings);
+
+			executableName = excutableNameDefault;
+			arguments = argumentsDefault;
+
+			if (!success)
+			{
+				return false;
+			}
+
+			arguments = argumentsDefault
+				.Replace("%cert_subject%", _settings.Certificate.Subject)
+				.Replace(
+					"%expires_in%",
+					(DateTime.Now - _settings.Certificate.NotAfter).TotalDays.ToString("####.#").Replace(",", "."));
+
+			return true;
 		}
+
 	}
 }

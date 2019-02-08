@@ -26,11 +26,11 @@ namespace Freecount
 
 		#region Private
 
-		private static long _secondsPassedWatchingCertificates;
+		private static long _secondsPassedWatching;
 		private const string CONFIG_PATH = "config.xml";
 
 		private static int _tmrIntervalSeconds;
-		private static long _tmrCertsIntervalSeconds;
+		private static long _certificcateCheckIntervalSeconds;
 
 		private static Dictionary<string, decimal> _watchedDisksThresholds;
 		private static Dictionary<string, ThresholdType> _watchedDisksThresholdTypes;
@@ -61,11 +61,10 @@ namespace Freecount
 
 		private static void Main(string[] args)
 		{
-			_secondsPassedWatchingCertificates = 0;
+			_secondsPassedWatching = 0;
 			Console.WriteLine($"Freecount v{ProgramVersion}{Environment.NewLine}{Environment.NewLine}Loading config...");
 			if (ReadConfig2())
 			{
-				Init();
 				while (true)
 				{
 					if (Console.KeyAvailable)
@@ -84,42 +83,12 @@ namespace Freecount
 #endif
 					Thread tr = new Thread(_getNumbers);
 					tr.Start();
-					_secondsPassedWatchingCertificates += _tmrIntervalSeconds;
 					Thread.Sleep(_tmrIntervalSeconds * 1000);
+					_secondsPassedWatching += _tmrIntervalSeconds;
 				}
 			}
 		}
-
-		#region Methods for initilizing
 		
-		static void Init()
-		{
-			_searcher = new ManagementObjectSearcher(
-				new ObjectQuery("SELECT * FROM Win32_OperatingSystem")
-			);
-			_secondsPassedWatchingCertificates = _tmrCertsIntervalSeconds + 1;
-			//_getNumbers = () =>
-			//{
-			//	Console.WriteLine($"{Environment.NewLine}[{DateTime.Now.ToString("s").Replace("T", " ")}] >{new string('-', 8)}");
-			//	CheckRam();
-			//	CheckHdd();
-			//	CheckCertificates();
-			//};
-
-			_getNumbers = () =>
-			{
-				Console.WriteLine($"{Environment.NewLine}[{DateTime.Now.ToString("s").Replace("T", " ")}] >{new string('-', 8)}");
-				foreach (var checker in _checkers)
-				{
-					ProcessCheckResult(checker.Check());
-				}
-			};
-
-			Console.WriteLine($"Watchers configured!{Environment.NewLine}Watching. Press ESC to exit.{Environment.NewLine}");
-		}
-
-		#endregion
-
 		#region Methods for working with configuration
 
 		private static bool ReadConfig2()
@@ -128,11 +97,12 @@ namespace Freecount
 			{
 				XDocument cfg = XDocument.Load(CONFIG_PATH);
 				_tmrIntervalSeconds = int.Parse(cfg.GetChildElementValue("CheckupIntervalMinutes")) * 60;
-				_tmrCertsIntervalSeconds = -1;
+				_certificcateCheckIntervalSeconds = -1;
 				try
 				{
-					_tmrCertsIntervalSeconds =
+					_certificcateCheckIntervalSeconds =
 						(long)int.Parse(cfg.GetChildElementValue("CertCheckupIntervalDays")) * 86400;
+					_certificateWatcherIsConfigured = true;
 				}
 				catch
 				{
@@ -140,7 +110,7 @@ namespace Freecount
 				}
 
 #if DEBUG
-				_tmrCertsIntervalSeconds = 10;
+				_certificcateCheckIntervalSeconds = 10;
 #endif
 				var diskConfigurations = cfg.GetChildElementsByAttributeValue("type", "disk");
 				if (diskConfigurations != null)
@@ -201,7 +171,16 @@ namespace Freecount
 
 				PrintConfig2();
 
-				Console.WriteLine("Configuring watchers...");
+				Console.WriteLine($"Watchers configured!{Environment.NewLine}Watching. Press ESC to exit.{Environment.NewLine}");
+
+				_getNumbers = () =>
+				{
+					Console.WriteLine($"{Environment.NewLine}[{DateTime.Now.ToString("s").Replace("T", " ")}] >{new string('-', 8)}");
+					foreach (var checker in _checkers)
+					{
+						ProcessCheckResult(checker.Check());
+					}
+				};
 
 				return true;
 			}
@@ -217,7 +196,7 @@ namespace Freecount
 		{
 			Console.WriteLine($"{new string('-', 16)}");
 			Console.WriteLine($"Checkup interval: {_tmrIntervalSeconds / 60} minute(s)");
-			Console.WriteLine($"Certificates checkup interval: {_tmrCertsIntervalSeconds / 60 / 60 / 24} day(s)");
+			Console.WriteLine($"Certificates checkup interval: {_certificcateCheckIntervalSeconds / 60 / 60 / 24} day(s)");
 			Console.WriteLine($"Watched objects:{Environment.NewLine}");
 
 			foreach (var checker in _checkers.OrderBy(c => c.Name))
@@ -236,10 +215,10 @@ namespace Freecount
 			{
 				XDocument cfg = XDocument.Load(CONFIG_PATH);
 				_tmrIntervalSeconds = int.Parse(cfg.Root.Element("CheckupIntervalMinutes").Value) * 60;
-				_tmrCertsIntervalSeconds = -1;
+				_certificcateCheckIntervalSeconds = -1;
 				try
 				{
-					_tmrCertsIntervalSeconds =
+					_certificcateCheckIntervalSeconds =
 						(long)int.Parse(cfg.Root.Element("CertCheckupIntervalDays").Value) * 86400;
 				}
 				catch
@@ -248,7 +227,7 @@ namespace Freecount
 				}
 
 #if DEBUG
-				_tmrCertsIntervalSeconds = 10;
+				_certificcateCheckIntervalSeconds = 10;
 #endif
 
 				#region [watched disks setup]
@@ -407,7 +386,7 @@ namespace Freecount
 				}
 
 				if (_watchedCertificates != null
-					&& _tmrCertsIntervalSeconds != -1
+					&& _certificcateCheckIntervalSeconds != -1
 					&& !wasErrorDuringCertWatcherInit)
 				{
 					_certificateWatcherIsConfigured = true;
@@ -440,7 +419,7 @@ namespace Freecount
 			Console.WriteLine($"Checkup interval: {_tmrIntervalSeconds / 60} minute(s)");
 			if (_certificateWatcherIsConfigured)
 			{
-				Console.WriteLine($"Certificates checkup interval: {_tmrCertsIntervalSeconds / 60 / 60 / 24} day(s)");
+				Console.WriteLine($"Certificates checkup interval: {_certificcateCheckIntervalSeconds / 60 / 60 / 24} day(s)");
 			}
 
 			Console.WriteLine($"Watched objects:{Environment.NewLine}");
@@ -786,9 +765,9 @@ namespace Freecount
 
 		private static void CheckCertificates()
 		{
-			if ((_secondsPassedWatchingCertificates >= _tmrCertsIntervalSeconds) && _certificateWatcherIsConfigured)
+			if ((_secondsPassedWatching >= _certificcateCheckIntervalSeconds) && _certificateWatcherIsConfigured)
 			{
-				_secondsPassedWatchingCertificates = 0;
+				_secondsPassedWatching = 0;
 				foreach (KeyValuePair<string, X509Certificate2> certs in _watchedCertificates)
 				{
 					if (certs.Value.NotAfter.AddDays(-_watchedCertificatesDaysBeforeAlert[certs.Key])
@@ -838,15 +817,18 @@ namespace Freecount
 				return;
 			}
 
-			result.GetCommandLineParts(out string executableName, out string arguments);
-			ProcessStartInfo scriptInfo = new ProcessStartInfo(executableName, arguments);
-			try
+			var hasValidCommandLine = result.GetCommandLineParts(out string executableName, out string arguments);
+			if (hasValidCommandLine)
 			{
-				Process.Start(scriptInfo);
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Script start failed. Message: {ex.Message}");
+				ProcessStartInfo scriptInfo = new ProcessStartInfo(executableName, arguments);
+				try
+				{
+					Process.Start(scriptInfo);
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Script start failed. Message: {ex.Message}");
+				}
 			}
 
 			_emailNotifier.SendMail(result);

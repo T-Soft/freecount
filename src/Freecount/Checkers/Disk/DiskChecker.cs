@@ -11,8 +11,7 @@ namespace Freecount.Checkers.Disk
 	internal class DiskChecker : ResourceChecker
 	{
 		private readonly DiskCheckerSettings _settings;
-		private bool _wasWarning;
-
+		
 		public override string Name => $"Disk {_settings.DriveLetter} checker";
 
 		public DiskChecker(DiskCheckerSettings settings)
@@ -32,7 +31,7 @@ namespace Freecount.Checkers.Disk
 			if (driveInfo == null)
 			{
 				// means no drive found
-				result = new DiskCheckResult(_settings, long.MinValue, false, _wasWarning)
+				result = new DiskCheckResult(Name, _settings, long.MinValue, false, _wasWarning)
 				{
 					WasErrorDuringCheckerExecution = true,
 					CheckerExecutionErrorMessage = $"Drive {_settings.DriveLetter} not found."
@@ -55,7 +54,7 @@ namespace Freecount.Checkers.Disk
 						&& spaceLeftOnDriveGb > _settings.CriticalThreshold)
 				)
 				{
-					result = new DiskCheckResult(_settings, spaceLeftOnDriveGb, false, _wasWarning);
+					result = new DiskCheckResult(Name, _settings, spaceLeftOnDriveGb, false, _wasWarning);
 					_wasWarning = true;
 				}
 			}
@@ -68,7 +67,7 @@ namespace Freecount.Checkers.Disk
 				)
 				{
 
-					result = new DiskCheckResult(_settings, spaceLeftOnDriveGb, true, _wasWarning);
+					result = new DiskCheckResult(Name, _settings, spaceLeftOnDriveGb, true, _wasWarning);
 					_wasWarning = false;
 				}
 			}

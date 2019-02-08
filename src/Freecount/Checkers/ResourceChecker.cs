@@ -11,5 +11,7 @@ namespace Freecount.Checkers
 		public abstract ResourceCheckResult Check();
 		public abstract string ReportConfiguration();
 		public abstract string Name { get; }
+
+		protected bool _wasWarning;
 	}
 }

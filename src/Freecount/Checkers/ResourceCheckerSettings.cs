@@ -6,7 +6,5 @@ namespace Freecount.Checkers
 	{
 		public string CommandLineToExecute { set; get; }
 		public abstract string GetString { get; }
-
-		public string ExecutableToRun => CommandLineToExecute.Split(' ').First();
 	}
 }

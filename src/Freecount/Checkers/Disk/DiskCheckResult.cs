@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using Freecount.Email;
 using Freecount.Helpers;
 
@@ -7,27 +8,18 @@ namespace Freecount.Checkers.Disk
 {
 	internal class DiskCheckResult : ResourceCheckResult
 	{
-		public override string CheckName { get; }
-		private DiskCheckerSettings _settings;
-		private double _driveSpace;
-		
-		public DiskCheckResult(DiskCheckerSettings settings, double driveSpace, bool isOk, bool wasErrorOnLastCheck)
+		private readonly DiskCheckerSettings _settings;
+		private readonly double _driveSpace;
+
+		public DiskCheckResult(
+			string checkerName,
+			DiskCheckerSettings settings,
+			double driveSpace,
+			bool isOk,
+			bool wasErrorOnLastCheck) : base(checkerName, isOk, wasErrorOnLastCheck)
 		{
 			_driveSpace = driveSpace;
 			_settings = settings;
-			IsOk = isOk;
-
-			if (!isOk && wasErrorOnLastCheck)
-			{
-				ShouldNotify = false;
-			}
-			else
-			{
-				ShouldNotify = true;
-				EventType = isOk
-					? EventType.Ok
-					: EventType.Warning;
-			}
 		}
 
 		public override IEnumerable<string> GetStatusReport()
@@ -40,17 +32,39 @@ namespace Freecount.Checkers.Disk
 
 		public override string GetEmailSubject(string template)
 		{
-			throw new NotImplementedException();
+			//<Subject>WARNING! %nick% state critical!</Subject>
+			return template.Replace("%nick%", CheckName);
 		}
 
 		public override string GetEmailBody(string template)
 		{
-			throw new NotImplementedException();
+			//<Body>WARNING! Counter %nick% value [%value% GB] is below threshold of [%limit% GB]</Body>
+			return template
+				.Replace("%value%", _driveSpace.ToString("####.#").Replace(",", "."))
+				.Replace("%limit%", _settings.CriticalThreshold.ToString("####.#").Replace(",", "."))
+				.Replace("%nick%", CheckName);
 		}
 
-		public override void GetCommandLineParts(out string executableName, out string arguments)
+		public override bool GetCommandLineParts(out string executableName, out string arguments)
 		{
-			throw new NotImplementedException();
+			//cmd.exe ..\..\a.html type=dskD value=%value% limit=%limit%
+			(bool success, string excutableNameDefault, string argumentsDefault) =
+				GetCommandLinePartsDefault(_settings);
+
+			executableName = excutableNameDefault;
+			arguments = argumentsDefault;
+
+			if (!success)
+			{
+				return false;
+			}
+
+			arguments = argumentsDefault
+				.Replace("%value%", _driveSpace.ToString("####.#").Replace(",", "."))
+				.Replace("%limit%", _settings.CriticalThreshold.ToString("####.#").Replace(",", "."))
+				.Replace("%type%", _settings.ThresholdType.ToString().ToLower());
+
+			return true;
 		}
 	}
 }
